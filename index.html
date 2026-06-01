@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบหักคะแนนนักเรียน</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f0f4f8;--surface:#fff;--surface2:#f7fafc;--border:#e2e8f0;--border2:#cbd5e1;
+  --accent:#2563eb;--accent-light:#dbeafe;
+  --danger:#dc2626;--danger-light:#fee2e2;
+  --warn:#d97706;--warn-light:#fef3c7;
+  --good:#059669;--good-light:#d1fae5;
+  --text:#1e293b;--text2:#475569;--muted:#94a3b8;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.12);
+  --r:14px;--rs:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+
+/* ── AUTO-SAVE TOAST ── */
+#saveToast{
+  position:fixed;bottom:24px;right:24px;z-index:9999;
+  display:flex;align-items:center;gap:10px;
+  padding:12px 18px;border-radius:12px;
+  background:#1e293b;color:#fff;
+  font-family:'Kanit',sans-serif;font-size:14px;font-weight:500;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+  opacity:0;transform:translateY(16px) scale(.96);
+  transition:opacity .25s, transform .25s;
+  pointer-events:none;
+}
+#saveToast.show{opacity:1;transform:none}
+#saveToast .toast-icon{font-size:18px}
+#saveToast .toast-bar{
+  width:3px;height:32px;border-radius:99px;background:#334155;overflow:hidden;margin-left:4px;
+}
+#saveToast .toast-bar-fill{
+  width:100%;height:0%;border-radius:99px;background:#22d3ee;
+  transition:height linear;
+}
+
+/* HEADER */
+.app-header{background:linear-gradient(135deg,#1e3a8a,#1d4ed8 50%,#0284c7);padding:20px 20px 28px;position:relative;overflow:hidden}
+.app-header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:20px;background:var(--bg);border-radius:20px 20px 0 0}
+.hinner{max-width:1200px;margin:0 auto;position:relative;z-index:1}
+.htop{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.atitle{font-family:'Kanit',sans-serif;font-size:clamp(18px,4vw,26px);font-weight:700;color:#fff;line-height:1.2}
+.atitle span{opacity:.7;font-weight:400;font-size:.65em;display:block}
+.hacts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--rs);border:none;font-family:'Kanit',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all .18s;white-space:nowrap}
+.btn-white{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);backdrop-filter:blur(4px)}
+.btn-white:hover{background:rgba(255,255,255,.25)}
+.btn-solid{background:#fff;color:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.btn-solid:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.btn-blue{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.3)}
+.btn-blue:hover{background:#1d4ed8;transform:translateY(-1px)}
+.btn-gray{background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2)}
+.btn-gray:hover{border-color:var(--accent);color:var(--accent)}
+.btn-red{background:var(--danger-light);color:var(--danger);border:1.5px solid #fca5a5}
+.btn-red:hover{background:var(--danger);color:#fff}
+.btn-green{background:var(--good-light);color:var(--good);border:1.5px solid #6ee7b7}
+.btn-green:hover{background:var(--good);color:#fff}
+.btn-warn{background:var(--warn-light);color:var(--warn);border:1.5px solid #fcd34d}
+.btn-warn:hover{background:var(--warn);color:#fff}
+.icon-btn{width:32px;height:32px;border-radius:8px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all .15s}
+
+/* MAIN */
+.main{max-width:1200px;margin:0 auto;padding:16px 16px 40px}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
+.stat-box{background:var(--surface);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow);border:1px solid var(--border);text-align:center}
+.stat-box .sv{font-family:'Kanit',sans-serif;font-size:26px;font-weight:700;line-height:1}
+.stat-box .sl{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* TOOLBAR */
+.toolbar{background:var(--surface);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tg{display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:1;min-width:220px}
+input[type=text],input[type=number],select,textarea{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--rs);padding:9px 13px;color:var(--text);font-family:'IBM Plex Sans Thai',sans-serif;font-size:14px;outline:none;transition:border-color .18s,box-shadow .18s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.irow{display:flex;gap:8px;flex:1;min-width:0}
+.irow input{flex:1;min-width:0}
+
+/* MONTH TABS */
+.month-tabs{background:var(--surface);border-radius:var(--r);padding:10px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.month-tabs-inner{display:flex;gap:6px;min-width:max-content}
+.mbtn{padding:8px 16px;border-radius:var(--rs);border:1.5px solid transparent;background:transparent;color:var(--text2);font-family:'Kanit',sans-serif;font-size:14px;cursor:pointer;transition:all .18s;white-space:nowrap;position:relative}
+.mbtn:hover{background:var(--accent-light);color:var(--accent)}
+.mbtn.active{background:var(--accent);color:#fff;box-shadow:0 3px 10px rgba(37,99,235,.35)}
+.mbtn .dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:99px;background:var(--danger)}
+
+/* VIEW BAR */
+.view-bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.vtoggle{display:flex;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rs);overflow:hidden;box-shadow:var(--shadow)}
+.vtoggle button{padding:8px 16px;border:none;background:transparent;font-family:'Kanit',sans-serif;font-size:13px;cursor:pointer;color:var(--text2);transition:all .18s;display:flex;align-items:center;gap:5px}
+.vtoggle button.active{background:var(--accent);color:#fff}
+
+/* CARD */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.stu-card{background:var(--surface);border-radius:var(--r);border:1.5px solid var(--border);box-shadow:var(--shadow);overflow:hidden;transition:all .2s}
+.stu-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.stu-card-header{padding:14px 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+.stu-avatar{border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;font-weight:700;color:#fff;flex-shrink:0}
+.stu-card-info{flex:1;min-width:0}
+.stu-card-info .name{font-family:'Kanit',sans-serif;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stu-card-info .meta{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* BIG SCORE */
+.score-main{padding:16px;display:flex;align-items:center;gap:16px}
+.score-circle{width:72px;height:72px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;border:3px solid;flex-shrink:0}
+.sc-num{font-size:24px;font-weight:700;line-height:1}
+.sc-sub{font-size:10px;opacity:.7}
+.score-detail{flex:1}
+.sbar-wrap{height:10px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:8px}
+.sbar{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.score-info-row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:10px}
+.score-btns{display:flex;gap:6px;flex-wrap:wrap}
+.score-btns .btn{flex:1;padding:8px;font-size:13px;justify-content:center;min-width:80px}
+
+/* MONTH BREAKDOWN on card */
+.month-breakdown{padding:12px 16px 14px;border-top:1px solid var(--border)}
+.mb-title{font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center}
+.mb-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.mb-cell{text-align:center;padding:5px 2px;border-radius:7px;cursor:pointer;transition:all .15s;border:1.5px solid transparent}
+.mb-cell:hover{border-color:var(--accent)}
+.mb-cell.cur{border-color:var(--accent);background:var(--accent-light)}
+.mb-cell .mmc{font-size:10px;color:var(--muted)}
+.mb-cell .mms{font-family:'Kanit',sans-serif;font-size:13px;font-weight:600}
+.mb-cell .mmbar{height:3px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:3px}
+.mb-cell .mmbar-fill{height:100%;border-radius:99px}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border-radius:var(--r);border:1.5px solid var(--border);box-shadow:var(--shadow);overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:820px}
+thead{background:var(--surface2)}
+th{padding:12px 12px;text-align:left;font-family:'Kanit',sans-serif;font-size:13px;font-weight:600;color:var(--text2);border-bottom:2px solid var(--border);white-space:nowrap}
+th.sc{text-align:center;min-width:52px}
+td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.td-name{display:flex;align-items:center;gap:10px}
+.td-actions{display:flex;gap:5px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.md-pill{display:inline-block;padding:2px 8px;border-radius:6px;font-family:'Kanit',sans-serif;font-size:13px;font-weight:600}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .25s}
+.overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border-radius:18px;width:100%;max-width:460px;box-shadow:var(--shadow-lg);border:1.5px solid var(--border);transform:scale(.96) translateY(8px);transition:transform .25s;overflow:hidden}
+.overlay.show .modal{transform:none}
+.mhead{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mhead h2{font-family:'Kanit',sans-serif;font-size:17px;font-weight:600}
+.mclose{background:var(--surface2);border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .15s}
+.mclose:hover{background:var(--danger-light);color:var(--danger)}
+.mbody{padding:18px 20px}
+.frow{margin-bottom:14px}
+.frow label{display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:6px}
+.frow textarea{resize:vertical}
+.mfoot{padding:12px 20px 18px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border)}
+
+/* ── RESET CONFIRM MODAL ── */
+#resetModal .modal{max-width:420px}
+.reset-warning-box{
+  background:linear-gradient(135deg,#fff7ed,#fef2f2);
+  border:1.5px solid #fca5a5;
+  border-radius:12px;
+  padding:16px;
+  margin-bottom:16px;
+  text-align:center;
+}
+.reset-warning-box .rw-icon{font-size:36px;margin-bottom:8px}
+.reset-warning-box .rw-title{font-family:'Kanit',sans-serif;font-size:17px;font-weight:700;color:var(--danger);margin-bottom:6px}
+.reset-warning-box .rw-sub{font-size:13px;color:var(--text2);line-height:1.6}
+.reset-confirm-input-wrap{margin-top:14px}
+.reset-confirm-input-wrap label{font-size:13px;color:var(--text2);margin-bottom:6px;display:block}
+.reset-confirm-input-wrap .confirm-word{
+  font-family:'Kanit',sans-serif;font-weight:700;color:var(--danger);
+  background:var(--danger-light);padding:2px 8px;border-radius:6px;
+}
+#resetConfirmInput{border-color:var(--border2);margin-top:6px;text-align:center;font-family:'Kanit',sans-serif;font-size:16px;letter-spacing:2px}
+#resetConfirmInput.ok{border-color:var(--danger);box-shadow:0 0 0 3px rgba(220,38,38,.1)}
+#resetSubmitBtn{transition:all .2s}
+#resetSubmitBtn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+
+/* DETAIL PANEL */
+.det-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .25s}
+@media(min-width:600px){.det-overlay{align-items:center;justify-content:center;padding:20px}}
+.det-overlay.show{opacity:1;pointer-events:all}
+.det-panel{background:var(--surface);width:100%;max-width:580px;max-height:90vh;overflow-y:auto;border-radius:20px 20px 0 0;box-shadow:var(--shadow-lg);transform:translateY(30px);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+@media(min-width:600px){.det-panel{border-radius:20px;transform:scale(.96) translateY(8px)}}
+.det-overlay.show .det-panel{transform:none}
+.dp-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.dp-body{padding:18px 20px}
+
+/* HISTORY */
+.hist-section{margin-top:20px}
+.sect-head{font-family:'Kanit',sans-serif;font-size:15px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.log-list{background:var(--surface);border-radius:var(--r);border:1.5px solid var(--border);box-shadow:var(--shadow);overflow:hidden}
+.log-item{padding:11px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.log-item:last-child{border-bottom:none}
+.log-item:hover{background:var(--surface2)}
+.log-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.log-info{flex:1;min-width:0}
+.li-name{font-weight:500;font-size:14px}
+.li-meta{font-size:12px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log-chg{font-family:'Kanit',sans-serif;font-size:17px;font-weight:700;flex-shrink:0}
+.empty-state{text-align:center;padding:30px;color:var(--muted);font-size:14px}
+.empty-state .ei{font-size:34px;margin-bottom:8px}
+
+@media(max-width:640px){.cards-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:repeat(3,1fr)}.toolbar{flex-direction:column}.tg{width:100%}table{min-width:700px}}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fi{animation:fadeIn .3s ease both}
+</style>
+</head>
+<body>
+
+<!-- ── AUTO-SAVE TOAST ── -->
+<div id="saveToast">
+  <span class="toast-icon">💾</span>
+  <span id="toastMsg">บันทึกอัตโนมัติแล้ว</span>
+  <div class="toast-bar"><div class="toast-bar-fill" id="toastBarFill"></div></div>
+</div>
+
+<div class="app-header">
+  <div class="hinner">
+    <div class="htop">
+      <div class="atitle">
+        📋 ระบบหักคะแนนนักเรียน
+        <span>คะแนนเต็ม 100 คะแนน · บันทึกรายเดือน 12 เดือน · <span id="lastSavedLabel" style="color:rgba(255,255,255,.6);font-size:.9em"></span></span>
+      </div>
+      <div class="hacts">
+        <button class="btn btn-white" onclick="exportCSV()">📥 Export CSV</button>
+        <button class="btn btn-solid" onclick="openAddStudent()">+ เพิ่มนักเรียน</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="toolbar">
+    <div class="tg">
+      <div class="irow" style="flex:1">
+        <input type="text" id="searchInput" placeholder="🔍 ค้นหาชื่อ..." oninput="render()">
+      </div>
+      <select id="classFilter" onchange="render()" style="min-width:130px"></select>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-gray" onclick="openManageClasses()">🏫 จัดการห้อง</button>
+      <button class="btn btn-red" onclick="confirmClearAll()">🗑 ล้างทั้งหมด</button>
+    </div>
+  </div>
+
+  <div class="month-tabs">
+    <div class="month-tabs-inner" id="monthTabs"></div>
+  </div>
+
+  <div class="view-bar">
+    <div class="vtoggle">
+      <button id="btnCard" class="active" onclick="setView('card')">🃏 การ์ด</button>
+      <button id="btnTable" onclick="setView('table')">📊 ตาราง</button>
+    </div>
+    <div style="flex:1"></div>
+    <span style="font-size:13px;color:var(--muted)" id="countLabel"></span>
+  </div>
+
+  <div id="mainContent"></div>
+
+  <div class="hist-section">
+    <div class="sect-head">
+      <span>📝 ประวัติการหักคะแนน — เดือน <span id="histMonthLabel"></span></span>
+      <button class="btn btn-gray" style="font-size:12px;padding:6px 12px" onclick="clearMonthHistory()">ล้างประวัติเดือนนี้</button>
+    </div>
+    <div id="historyLog"></div>
+  </div>
+</div>
+
+<!-- STUDENT MODAL -->
+<div class="overlay" id="stuModal">
+  <div class="modal">
+    <div class="mhead"><h2 id="stuModalTitle">เพิ่มนักเรียน</h2><button class="mclose" onclick="closeModal('stuModal')">✕</button></div>
+    <div class="mbody">
+      <div class="frow"><label>ชื่อ-นามสกุล *</label><input type="text" id="sfName" placeholder="กรอกชื่อนักเรียน"></div>
+      <div class="frow"><label>เลขที่</label><input type="number" id="sfNo" placeholder="เลขที่ในห้อง" min="1"></div>
+      <div class="frow"><label>ห้องเรียน</label><select id="sfClass"></select></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-gray" onclick="closeModal('stuModal')">ยกเลิก</button>
+      <button class="btn btn-blue" onclick="saveStudent()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCORE MODAL -->
+<div class="overlay" id="scoreModal">
+  <div class="modal">
+    <div class="mhead"><h2 id="scoreModalTitle">หักคะแนน</h2><button class="mclose" onclick="closeModal('scoreModal')">✕</button></div>
+    <div class="mbody">
+      <div id="scoreModalInfo" style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:14px;color:var(--text2)"></div>
+      <div class="frow"><label id="smPtsLabel">จำนวนคะแนนที่หัก *</label><input type="number" id="smPoints" min="1" max="100" placeholder="ระบุจำนวน"></div>
+      <div class="frow"><label>เหตุผล</label><textarea id="smReason" rows="2" placeholder="ระบุเหตุผล..."></textarea></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-gray" onclick="closeModal('scoreModal')">ยกเลิก</button>
+      <button class="btn" id="scoreModalBtn" onclick="confirmScore()">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLASS MODAL -->
+<div class="overlay" id="classModal">
+  <div class="modal">
+    <div class="mhead"><h2>🏫 จัดการห้องเรียน</h2><button class="mclose" onclick="closeModal('classModal')">✕</button></div>
+    <div class="mbody">
+      <div class="irow" style="margin-bottom:14px">
+        <input type="text" id="newClassName" placeholder="เช่น 1/3, ม.4/1">
+        <button class="btn btn-blue" onclick="addClass()" style="flex-shrink:0">+ เพิ่ม</button>
+      </div>
+      <div id="classListUI"></div>
+    </div>
+    <div class="mfoot"><button class="btn btn-blue" onclick="closeModal('classModal')">เสร็จสิ้น</button></div>
+  </div>
+</div>
+
+<!-- ── RESET SCORE MODAL ── -->
+<div class="overlay" id="resetModal">
+  <div class="modal">
+    <div class="mhead">
+      <h2>⚠️ รีเซ็ตคะแนน</h2>
+      <button class="mclose" onclick="closeModal('resetModal')">✕</button>
+    </div>
+    <div class="mbody">
+      <div class="reset-warning-box">
+        <div class="rw-icon">🔄</div>
+        <div class="rw-title" id="resetStudentName">ชื่อนักเรียน</div>
+        <div class="rw-sub">
+          การรีเซ็ตจะ<b>ลบประวัติการหักคะแนนทั้งหมด</b>ของนักเรียนคนนี้<br>
+          และคืนคะแนนกลับเป็น <b style="color:var(--good)">100 คะแนน</b><br>
+          <span style="color:var(--danger);font-size:12px">⚠️ ไม่สามารถย้อนกลับได้</span>
+        </div>
+      </div>
+      <div class="reset-confirm-input-wrap">
+        <label>พิมพ์ <span class="confirm-word">รีเซ็ต</span> เพื่อยืนยัน</label>
+        <input type="text" id="resetConfirmInput" placeholder="พิมพ์ที่นี่..." oninput="onResetInputChange(this)">
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-gray" onclick="closeModal('resetModal')">ยกเลิก</button>
+      <button class="btn btn-red" id="resetSubmitBtn" disabled onclick="doReset()">🔄 รีเซ็ตคะแนน</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="det-overlay" id="detailOverlay" onclick="closeDetailClick(event)">
+  <div class="det-panel" id="detailPanel"></div>
+</div>
+
+<script>
+const MONTHS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const COLORS=['#2563eb','#0891b2','#7c3aed','#db2777','#d97706','#059669','#dc2626','#4f46e5'];
+
+let state={
+  students:[],
+  classes:['1/1','1/2','2/1','2/2','3/1','3/2','4/1','4/2','4/3','5/1','5/2','6/1','6/2'],
+  history:[],
+  month:new Date().getMonth(),
+  view:'card'
+};
+let editId=null,scoreAction=null,resetTargetId=null;
+
+// ── AUTO-SAVE ──
+let saveTimer=null;
+let toastHideTimer=null;
+let lastSavedTs=null;
+
+function save(instant=false){
+  // debounce: จะบันทึกจริงหลัง 400ms หากไม่มีการเปลี่ยนแปลงอีก
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    try{
+      localStorage.setItem('ssc3',JSON.stringify(state));
+      lastSavedTs=Date.now();
+      updateLastSavedLabel();
+      showSaveToast();
+    }catch(e){showSaveToast('⚠️ บันทึกไม่สำเร็จ')}
+  }, instant?0:400);
+}
+
+function updateLastSavedLabel(){
+  if(!lastSavedTs)return;
+  const d=new Date(lastSavedTs);
+  const hh=String(d.getHours()).padStart(2,'0');
+  const mm=String(d.getMinutes()).padStart(2,'0');
+  const ss=String(d.getSeconds()).padStart(2,'0');
+  const el=document.getElementById('lastSavedLabel');
+  if(el) el.textContent=`💾 บันทึกล่าสุด ${hh}:${mm}:${ss}`;
+}
+
+// อัปเดตเวลาบันทึกทุก 1 วินาที
+setInterval(updateLastSavedLabel,1000);
+
+function showSaveToast(msg='บันทึกอัตโนมัติแล้ว'){
+  const toast=document.getElementById('saveToast');
+  const msgEl=document.getElementById('toastMsg');
+  const bar=document.getElementById('toastBarFill');
+  msgEl.textContent=msg;
+  clearTimeout(toastHideTimer);
+
+  // reset bar
+  bar.style.transition='none';
+  bar.style.height='0%';
+  toast.classList.add('show');
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      bar.style.transition='height 2.4s linear';
+      bar.style.height='100%';
+    });
+  });
+
+  toastHideTimer=setTimeout(()=>{
+    toast.classList.remove('show');
+  },2600);
+}
+
+function load(){
+  try{
+    const s=localStorage.getItem('ssc3');
+    if(s) state={...state,...JSON.parse(s)};
+    // หาเวลาล่าสุดจาก history
+    if(state.history&&state.history.length){
+      lastSavedTs=Date.now(); // ถือว่าเพิ่งโหลด
+      updateLastSavedLabel();
+    }
+  }catch(e){}
+}
+
+// utils
+function avatarColor(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))%COLORS.length;return COLORS[h]}
+function scColor(s){return s>=80?'#059669':s>=60?'#d97706':'#dc2626'}
+function scBg(s){return s>=80?'#d1fae5':s>=60?'#fef3c7':'#fee2e2'}
+function scLabel(s){return s>=90?'ดีเยี่ยม':s>=80?'ดีมาก':s>=70?'ดี':s>=60?'พอใช้':'ต้องปรับปรุง'}
+
+function currentScore(stu){
+  const total=state.history.filter(h=>h.stuId===stu.id).reduce((s,h)=>s+h.diff,0);
+  return Math.max(0,Math.min(100,100+total));
+}
+function scoreAtMonth(stu,m){
+  const total=state.history.filter(h=>h.stuId===stu.id&&h.month<=m).reduce((s,h)=>s+h.diff,0);
+  return Math.max(0,Math.min(100,100+total));
+}
+function deductInMonth(stu,m){
+  return state.history.filter(h=>h.stuId===stu.id&&h.month===m&&h.diff<0).reduce((s,h)=>s+Math.abs(h.diff),0);
+}
+
+// modals
+function openModal(id){document.getElementById(id).classList.add('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('show')}));
+
+// add/edit student
+function openAddStudent(){
+  editId=null;
+  document.getElementById('stuModalTitle').textContent='เพิ่มนักเรียน';
+  document.getElementById('sfName').value='';
+  document.getElementById('sfNo').value='';
+  refreshSelects();
+  document.getElementById('sfClass').value='';
+  openModal('stuModal');
+  setTimeout(()=>document.getElementById('sfName').focus(),200);
+}
+function openEditStudent(id){
+  const stu=state.students.find(s=>s.id===id);
+  editId=id;
+  document.getElementById('stuModalTitle').textContent='แก้ไขข้อมูล';
+  document.getElementById('sfName').value=stu.name;
+  document.getElementById('sfNo').value=stu.no||'';
+  refreshSelects();
+  document.getElementById('sfClass').value=stu.cls||'';
+  openModal('stuModal');
+  setTimeout(()=>document.getElementById('sfName').focus(),200);
+}
+function saveStudent(){
+  const name=document.getElementById('sfName').value.trim();
+  if(!name){document.getElementById('sfName').focus();return}
+  const no=document.getElementById('sfNo').value.trim();
+  const cls=document.getElementById('sfClass').value;
+  if(editId){
+    const stu=state.students.find(s=>s.id===editId);
+    stu.name=name;stu.no=no;stu.cls=cls;
+  } else {
+    state.students.push({id:Date.now()+Math.random(),name,no,cls});
+  }
+  closeModal('stuModal');save();render();
+}
+function removeStudent(id){
+  if(!confirm('ต้องการลบนักเรียนนี้?'))return;
+  state.students=state.students.filter(s=>s.id!==id);
+  state.history=state.history.filter(h=>h.stuId!==id);
+  save();render();
+}
+
+// ── RESET SCORE ──
+function openResetScore(id){
+  const stu=state.students.find(s=>s.id===id);
+  if(!stu)return;
+  resetTargetId=id;
+  document.getElementById('resetStudentName').textContent=stu.name;
+  document.getElementById('resetConfirmInput').value='';
+  document.getElementById('resetConfirmInput').classList.remove('ok');
+  document.getElementById('resetSubmitBtn').disabled=true;
+  openModal('resetModal');
+  setTimeout(()=>document.getElementById('resetConfirmInput').focus(),200);
+}
+function onResetInputChange(el){
+  const ok=el.value.trim()==='รีเซ็ต';
+  el.classList.toggle('ok',ok);
+  document.getElementById('resetSubmitBtn').disabled=!ok;
+}
+function doReset(){
+  if(!resetTargetId)return;
+  const inp=document.getElementById('resetConfirmInput').value.trim();
+  if(inp!=='รีเซ็ต')return;
+  const stu=state.students.find(s=>s.id===resetTargetId);
+  // ลบประวัติทั้งหมดของนักเรียนคนนี้
+  state.history=state.history.filter(h=>h.stuId!==resetTargetId);
+  // บันทึก log การรีเซ็ต
+  state.history.unshift({
+    stuId:stu.id,stuName:stu.name,
+    month:state.month,diff:0,
+    reason:'🔄 รีเซ็ตคะแนนเป็น 100',
+    ts:Date.now(),isReset:true
+  });
+  closeModal('resetModal');
+  resetTargetId=null;
+  save();render();
+}
+
+// score
+function openScore(id,isRestore){
+  const stu=state.students.find(s=>s.id===id);
+  scoreAction={id,isRestore};
+  const cur=currentScore(stu);
+  document.getElementById('scoreModalTitle').textContent=isRestore?`➕ เพิ่มคะแนน — ${stu.name}`:`➖ หักคะแนน — ${stu.name}`;
+  document.getElementById('scoreModalInfo').innerHTML=
+    `<b>${stu.name}</b> · ห้อง ${stu.cls||'—'}<br>
+    คะแนนคงเหลือ: <b style="color:${scColor(cur)};font-size:18px">${cur} / 100</b><br>
+    <span style="font-size:12px;color:var(--muted)">บันทึกใน: เดือน ${MONTHS[state.month]}</span>`;
+  document.getElementById('smPtsLabel').textContent=isRestore?'จำนวนคะแนนที่เพิ่ม *':'จำนวนคะแนนที่หัก *';
+  const btn=document.getElementById('scoreModalBtn');
+  btn.textContent=isRestore?'เพิ่มคะแนน':'หักคะแนน';
+  btn.style.cssText=`background:${isRestore?'#059669':'#dc2626'};color:#fff`;
+  document.getElementById('smPoints').value='';
+  document.getElementById('smReason').value='';
+  openModal('scoreModal');
+  setTimeout(()=>document.getElementById('smPoints').focus(),200);
+}
+function confirmScore(){
+  if(!scoreAction)return;
+  const pts=parseInt(document.getElementById('smPoints').value);
+  if(!pts||pts<1){document.getElementById('smPoints').focus();return}
+  const reason=document.getElementById('smReason').value.trim()||'—';
+  const stu=state.students.find(s=>s.id===scoreAction.id);
+  const diff=scoreAction.isRestore?pts:-pts;
+  state.history.unshift({stuId:scoreAction.id,stuName:stu.name,month:state.month,diff,reason,ts:Date.now()});
+  if(state.history.length>300)state.history.length=300;
+  closeModal('scoreModal');save();render();
+}
+
+// classes
+function openManageClasses(){renderClassListUI();openModal('classModal');setTimeout(()=>document.getElementById('newClassName').focus(),200)}
+function addClass(){
+  const v=document.getElementById('newClassName').value.trim();
+  if(!v||state.classes.includes(v))return;
+  state.classes.push(v);
+  document.getElementById('newClassName').value='';
+  save();renderClassListUI();refreshSelects();render();
+}
+function removeClass(cls){
+  state.classes=state.classes.filter(c=>c!==cls);
+  save();renderClassListUI();refreshSelects();render();
+}
+function renderClassListUI(){
+  const el=document.getElementById('classListUI');
+  if(!state.classes.length){el.innerHTML='<div class="empty-state" style="padding:16px">ยังไม่มีห้อง</div>';return}
+  el.innerHTML=state.classes.map(cls=>{
+    const cnt=state.students.filter(s=>s.cls===cls).length;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:10px;margin-bottom:7px;border:1px solid var(--border)">
+      <span style="flex:1;font-weight:500">🏫 ห้อง ${cls}</span>
+      <span style="font-size:12px;color:var(--muted)">${cnt} คน</span>
+      <button class="icon-btn" onclick="removeClass('${cls}')" style="background:var(--danger-light);color:var(--danger)">✕</button>
+    </div>`;
+  }).join('');
+}
+function refreshSelects(){
+  ['sfClass','classFilter'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const cur=el.value;
+    const isF=id==='classFilter';
+    el.innerHTML=(isF?'<option value="">ทุกห้อง</option>':'<option value="">— ไม่ระบุ —</option>')+
+      state.classes.map(c=>`<option value="${c}">ห้อง ${c}</option>`).join('');
+    el.value=cur;
+  });
+}
+
+// detail panel
+function openDetail(id){
+  const stu=state.students.find(s=>s.id===id);
+  const col=avatarColor(stu.name);
+  const cur=currentScore(stu);
+  const stuHist=state.history.filter(h=>h.stuId===id);
+  const panel=document.getElementById('detailPanel');
+  panel.innerHTML=`
+    <div class="dp-head">
+      <div class="stu-avatar" style="background:${col};width:52px;height:52px;font-size:20px">${stu.name.charAt(0)}</div>
+      <div style="flex:1">
+        <div style="font-family:'Kanit',sans-serif;font-size:18px;font-weight:700">${stu.name}</div>
+        <div style="font-size:13px;color:var(--muted)">ห้อง ${stu.cls||'—'}${stu.no?' · เลขที่ '+stu.no:''}</div>
+      </div>
+      <div style="text-align:right;margin-right:8px">
+        <div style="font-family:'Kanit',sans-serif;font-size:30px;font-weight:700;color:${scColor(cur)}">${cur}</div>
+        <div style="font-size:11px;color:var(--muted)">/ 100 คะแนน</div>
+      </div>
+      <button class="mclose" onclick="document.getElementById('detailOverlay').classList.remove('show')">✕</button>
+    </div>
+    <div class="dp-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="btn btn-red" onclick="openScore(${id},false);document.getElementById('detailOverlay').classList.remove('show')">➖ หักคะแนน</button>
+        <button class="btn btn-green" onclick="openScore(${id},true);document.getElementById('detailOverlay').classList.remove('show')">➕ เพิ่มคะแนน</button>
+        <button class="btn btn-warn" onclick="openResetScore(${id});document.getElementById('detailOverlay').classList.remove('show')">🔄 รีเซ็ต</button>
+        <button class="btn btn-gray" onclick="openEditStudent(${id});document.getElementById('detailOverlay').classList.remove('show')">✏️ แก้ไข</button>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:8px">
+          <span>คะแนนสะสม</span><span style="font-weight:600;color:${scColor(cur)}">${scLabel(cur)}</span>
+        </div>
+        <div style="height:14px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:8px">
+          <div style="height:100%;width:${cur}%;background:${scColor(cur)};border-radius:99px;transition:width .5s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
+          <span>0</span><span>ถูกหัก ${100-cur} คะแนน</span><span>100</span>
+        </div>
+      </div>
+      <div style="font-family:'Kanit',sans-serif;font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text2)">คะแนนสะสม ณ สิ้นแต่ละเดือน</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px">
+        ${MONTHS.map((mn,i)=>{
+          const sc=scoreAtMonth(stu,i);
+          const ded=deductInMonth(stu,i);
+          const isCur=i===state.month;
+          return `<div style="background:${isCur?'var(--accent-light)':'var(--surface2)'};border:1.5px solid ${isCur?'var(--accent)':'var(--border)'};border-radius:10px;padding:10px;text-align:center;cursor:pointer" onclick="state.month=${i};save();render();document.getElementById('detailOverlay').classList.remove('show')">
+            <div style="font-size:11px;color:var(--muted)">${mn}</div>
+            <div style="font-family:'Kanit',sans-serif;font-size:20px;font-weight:700;color:${scColor(sc)}">${sc}</div>
+            ${ded>0?`<div style="font-size:10px;color:var(--danger)">-${ded}</div>`:'<div style="font-size:10px;color:var(--muted)">ไม่มีการหัก</div>'}
+          </div>`;
+        }).join('')}
+      </div>
+      ${stuHist.length?`
+        <div style="font-family:'Kanit',sans-serif;font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text2)">ประวัติทั้งหมด</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${stuHist.map(h=>{
+            const isReset=h.isReset;
+            const isD=h.diff<0;
+            const d=new Date(h.ts);
+            return `<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;border:1px solid var(--border)">
+              <div style="background:${isReset?'#fef3c7':isD?'#fee2e2':'#d1fae5'};color:${isReset?'#d97706':isD?'#dc2626':'#059669'};font-size:16px;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center">${isReset?'🔄':isD?'↓':'↑'}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:500">${h.reason}</div>
+                <div style="font-size:11px;color:var(--muted)">${MONTHS[h.month]} · ${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}</div>
+              </div>
+              <div style="font-family:'Kanit',sans-serif;font-weight:700;font-size:16px;color:${isReset?'#d97706':isD?'#dc2626':'#059669'}">${isReset?'100':h.diff>0?'+'+h.diff:h.diff}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      `:'<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">ยังไม่มีประวัติ</div>'}
+    </div>`;
+  document.getElementById('detailOverlay').classList.add('show');
+}
+function closeDetailClick(e){if(e.target===document.getElementById('detailOverlay'))document.getElementById('detailOverlay').classList.remove('show')}
+
+function setView(v){
+  state.view=v;
+  document.getElementById('btnCard').classList.toggle('active',v==='card');
+  document.getElementById('btnTable').classList.toggle('active',v==='table');
+  save();render();
+}
+
+function filtered(){
+  const q=document.getElementById('searchInput').value.trim().toLowerCase();
+  const cls=document.getElementById('classFilter').value;
+  return state.students.filter(s=>(!q||s.name.toLowerCase().includes(q))&&(!cls||s.cls===cls));
+}
+
+function renderCard(stu){
+  const cur=currentScore(stu);
+  const col=avatarColor(stu.name);
+  const ded=deductInMonth(stu,state.month);
+  return `<div class="stu-card fi">
+    <div class="stu-card-header">
+      <div class="stu-avatar" style="background:${col};width:44px;height:44px;font-size:18px">${stu.name.charAt(0)}</div>
+      <div class="stu-card-info">
+        <div class="name">${stu.name}</div>
+        <div class="meta">ห้อง ${stu.cls||'—'}${stu.no?' · เลขที่ '+stu.no:''}</div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <button class="icon-btn" style="background:var(--surface2)" onclick="openDetail(${stu.id})" title="รายละเอียด">🔍</button>
+        <button class="icon-btn" style="background:var(--surface2)" onclick="openEditStudent(${stu.id})" title="แก้ไข">✏️</button>
+        <button class="icon-btn" style="background:var(--warn-light);color:var(--warn)" onclick="openResetScore(${stu.id})" title="รีเซ็ตคะแนน">🔄</button>
+        <button class="icon-btn" style="background:var(--danger-light);color:var(--danger)" onclick="removeStudent(${stu.id})" title="ลบ">🗑</button>
+      </div>
+    </div>
+    <div class="score-main">
+      <div class="score-circle" style="border-color:${scColor(cur)};color:${scColor(cur)};background:${scBg(cur)}">
+        <div class="sc-num">${cur}</div>
+        <div class="sc-sub">/ 100</div>
+      </div>
+      <div class="score-detail">
+        <div class="sbar-wrap"><div class="sbar" style="width:${cur}%;background:${scColor(cur)}"></div></div>
+        <div class="score-info-row">
+          <span style="color:${scColor(cur)};font-weight:600">${scLabel(cur)}</span>
+          <span>หักรวม <b style="color:var(--danger)">${100-cur}</b> คะแนน</span>
+        </div>
+        <div class="score-btns">
+          <button class="btn btn-red" onclick="openScore(${stu.id},false)">➖ หัก</button>
+          <button class="btn btn-green" onclick="openScore(${stu.id},true)">➕ เพิ่ม</button>
+          <button class="btn btn-warn" onclick="openResetScore(${stu.id})">🔄 รีเซ็ต</button>
+        </div>
+      </div>
+    </div>
+    <div class="month-breakdown">
+      <div class="mb-title">
+        <span>การหักคะแนนรายเดือน</span>
+        ${ded>0?`<span style="background:var(--danger-light);color:var(--danger);padding:2px 8px;border-radius:6px;font-size:11px">เดือนนี้: -${ded}</span>`:'<span style="color:var(--good);font-size:11px">เดือนนี้ไม่มีการหัก</span>'}
+      </div>
+      <div class="mb-grid">
+        ${MONTHS.map((mn,i)=>{
+          const d2=deductInMonth(stu,i);
+          const sc2=scoreAtMonth(stu,i);
+          const isCur=i===state.month;
+          return `<div class="mb-cell${isCur?' cur':''}" onclick="state.month=${i};save();render()" title="${mn}: ${sc2} คะแนน${d2>0?' (หัก '+d2+')':''}">
+            <div class="mmc">${mn}</div>
+            <div class="mms" style="color:${d2>0?'#dc2626':'var(--muted)'}">${d2>0?'-'+d2:'—'}</div>
+            <div class="mmbar"><div class="mmbar-fill" style="width:${sc2}%;background:${scColor(sc2)}"></div></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderTable(list){
+  return `<div class="table-wrap fi">
+    <table>
+      <thead><tr>
+        <th>เลขที่</th><th>ชื่อ-นามสกุล</th><th>ห้อง</th>
+        <th class="sc">คงเหลือ</th>
+        <th class="sc">หักรวม</th>
+        ${MONTHS.map(mn=>`<th class="sc">${mn}</th>`).join('')}
+        <th style="min-width:130px">จัดการ</th>
+      </tr></thead>
+      <tbody>
+        ${list.map(stu=>{
+          const cur=currentScore(stu);
+          const totalDed=100-cur;
+          return `<tr>
+            <td style="color:var(--muted);font-size:13px">${stu.no||'—'}</td>
+            <td><div class="td-name">
+              <div class="stu-avatar" style="background:${avatarColor(stu.name)};width:34px;height:34px;font-size:14px;border-radius:8px">${stu.name.charAt(0)}</div>
+              <span style="font-weight:500">${stu.name}</span>
+            </div></td>
+            <td>${stu.cls?`<span class="chip" style="background:var(--accent-light);color:var(--accent)">${stu.cls}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
+            <td style="text-align:center"><span style="font-family:'Kanit',sans-serif;font-size:18px;font-weight:700;color:${scColor(cur)}">${cur}</span></td>
+            <td style="text-align:center">${totalDed>0?`<span class="chip" style="background:var(--danger-light);color:var(--danger)">-${totalDed}</span>`:'<span style="color:var(--muted);font-size:12px">ไม่มี</span>'}</td>
+            ${MONTHS.map((_,i)=>{
+              const d=deductInMonth(stu,i);
+              const sc=scoreAtMonth(stu,i);
+              const isCur=i===state.month;
+              return `<td style="text-align:center;background:${isCur?scBg(sc):'transparent'}">${d>0?`<span class="md-pill" style="background:${isCur?'transparent':'var(--danger-light)'};color:#dc2626">-${d}</span>`:`<span style="color:var(--muted);font-size:12px">—</span>`}</td>`;
+            }).join('')}
+            <td><div class="td-actions">
+              <button class="icon-btn" style="background:var(--surface2)" onclick="openScore(${stu.id},false)" title="หัก">➖</button>
+              <button class="icon-btn" style="background:var(--surface2)" onclick="openScore(${stu.id},true)" title="เพิ่ม">➕</button>
+              <button class="icon-btn" style="background:var(--surface2)" onclick="openDetail(${stu.id})" title="ดู">🔍</button>
+              <button class="icon-btn" style="background:var(--warn-light);color:var(--warn)" onclick="openResetScore(${stu.id})" title="รีเซ็ต">🔄</button>
+              <button class="icon-btn" style="background:var(--danger-light);color:var(--danger)" onclick="removeStudent(${stu.id})" title="ลบ">🗑</button>
+            </div></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function render(){
+  const m=state.month;
+  const list=filtered();
+
+  document.getElementById('monthTabs').innerHTML=MONTHS.map((mn,i)=>{
+    const hasAct=state.history.some(h=>h.month===i);
+    return `<button class="mbtn${i===m?' active':''}" onclick="state.month=${i};save();render()">
+      ${mn}${hasAct&&i!==m?'<span class="dot"></span>':''}
+    </button>`;
+  }).join('');
+
+  document.getElementById('histMonthLabel').textContent=MONTHS[m];
+
+  const scores=state.students.map(s=>currentScore(s));
+  const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
+  const pass=scores.filter(x=>x>=60).length;
+  document.getElementById('statsRow').innerHTML=`
+    <div class="stat-box"><div class="sv" style="color:var(--accent)">${state.students.length}</div><div class="sl">นักเรียนทั้งหมด</div></div>
+    <div class="stat-box"><div class="sv" style="color:#b45309">${avg}</div><div class="sl">คะแนนเฉลี่ย</div></div>
+    <div class="stat-box"><div class="sv" style="color:#059669">${scores.length?Math.max(...scores):'-'}</div><div class="sl">สูงสุด</div></div>
+    <div class="stat-box"><div class="sv" style="color:#dc2626">${scores.length?Math.min(...scores):'-'}</div><div class="sl">ต่ำสุด</div></div>
+    <div class="stat-box"><div class="sv" style="color:#059669">${pass}</div><div class="sl">ผ่าน (≥60)</div></div>
+    <div class="stat-box"><div class="sv" style="color:#dc2626">${scores.length-pass}</div><div class="sl">ไม่ผ่าน</div></div>
+  `;
+
+  document.getElementById('countLabel').textContent=`แสดง ${list.length} / ${state.students.length} คน`;
+  refreshSelects();
+
+  const el=document.getElementById('mainContent');
+  if(!list.length){
+    el.innerHTML=`<div class="empty-state fi"><div class="ei">👩‍🎓</div><div>${state.students.length?'ไม่พบนักเรียน':'ยังไม่มีนักเรียน กด "+ เพิ่มนักเรียน"'}</div></div>`;
+  } else if(state.view==='card'){
+    el.innerHTML=`<div class="cards-grid">${list.map(s=>renderCard(s)).join('')}</div>`;
+  } else {
+    el.innerHTML=renderTable(list);
+  }
+
+  const logs=state.history.filter(h=>h.month===m).slice(0,50);
+  const hel=document.getElementById('historyLog');
+  if(!logs.length){hel.innerHTML='<div class="empty-state"><div class="ei">📭</div><div>ยังไม่มีประวัติในเดือนนี้</div></div>';return}
+  hel.innerHTML=`<div class="log-list">${logs.map(h=>{
+    const isReset=h.isReset;
+    const isD=h.diff<0;
+    const d=new Date(h.ts);
+    const time=`${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return `<div class="log-item">
+      <div class="log-icon" style="background:${isReset?'#fef3c7':isD?'#fee2e2':'#d1fae5'}">${isReset?'🔄':isD?'↓':'↑'}</div>
+      <div class="log-info">
+        <div class="li-name">${h.stuName}</div>
+        <div class="li-meta">${h.reason} · ${MONTHS[h.month]} ${time}</div>
+      </div>
+      <div class="log-chg" style="color:${isReset?'#d97706':isD?'#dc2626':'#059669'}">${isReset?'↺':h.diff>0?'+'+h.diff:h.diff}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function clearMonthHistory(){
+  const m=state.month;
+  if(!confirm(`ต้องการล้างประวัติเดือน ${MONTHS[m]}?`))return;
+  state.history=state.history.filter(h=>h.month!==m);
+  save();render();
+}
+
+function exportCSV(){
+  let csv='\uFEFFเลขที่,ชื่อ,ห้อง,คงเหลือ,หักรวม,'+MONTHS.join(',')+'\n';
+  state.students.forEach(stu=>{
+    const cur=currentScore(stu);
+    const ded=100-cur;
+    const monthly=MONTHS.map((_,i)=>deductInMonth(stu,i));
+    csv+=[stu.no||'',stu.name,stu.cls||'',cur,ded,...monthly].join(',')+'\n';
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`คะแนนนักเรียน_${new Date().toLocaleDateString('th')}.csv`;
+  a.click();
+}
+
+function confirmClearAll(){
+  if(!confirm('⚠️ ต้องการล้างข้อมูลทั้งหมดใช่หรือไม่?'))return;
+  state.students=[];state.history=[];
+  save();render();
+}
+
+// init
+load();
+if(!state.students.length){
+  const demo=[];
+  demo.forEach(d=>{state.students.push({id:Date.now()+Math.random(),...d});});
+  save();
+}
+render();
+</script>
+</body>
+</html>
